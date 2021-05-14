@@ -20,6 +20,8 @@ def gather_layers():
     get_tablecloth = li.openLayer_PDN(THISDIR + "\\league_tablecloth.pdn")
     # Sets the team dictionary and start the counters
     teams = {}
+    # It goes backwards
+    team_ids = 15
     team_num = 0
     num_layers = 1
     # Get the three other layers
@@ -27,13 +29,14 @@ def gather_layers():
     # Ignores the first 3 layers since they are not needed
     layers = get_tablecloth.layers[3:]
     for layer in layers:
-        if team_num == 14:
+        if team_ids == 1:
             break # Gotta find a better way to do this
-        define_team = "TEAM_%d" % (team_num + 1)
+        define_team = "TEAM_%d" % (team_ids - 1)
         teams[define_team] = layers[team_num*4:num_layers*4]
+        team_ids -= 1
         team_num += 1
         num_layers += 1
-    
+
     return get_tablecloth, sec_layers, teams
 
 class TableClothGenerator(QWidget):
