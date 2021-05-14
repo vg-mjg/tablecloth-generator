@@ -8,7 +8,7 @@ from PIL import Image
 # GUI libraries
 from PySide6 import QtCore
 from PySide6.QtWidgets import (QWidget, QApplication, QVBoxLayout, QHBoxLayout,
-    QComboBox, QLabel, QPushButton, QMessageBox)
+    QComboBox, QLabel, QPushButton, QMessageBox, QCheckBox)
 from PySide6.QtGui import QIcon, QPixmap
 
 # Absolute path to the current folder as constant for easy access
@@ -44,12 +44,37 @@ class TableClothGenerator(QWidget):
 
     def MainUI(self):
 
+
         # Lists the teams
         self.teams = ["Riichi Dicks Inc.", "U.M.A.", "Riichima Financial",
             "CoolDogz", "Nyakuza", "Kani Kartel", "Ebola Bois",
             "A.U.T.I.S.M.", "Mahjong Musketeers", "天団", "Jantama Judgement",
             "Bandora Bandits", "Akochan's Acolytes", "Freed Jiangshis"]
         # Set up the GUI
+        # Bottom (EAST)
+        self.label_bottom = QLabel(self)
+        self.label_bottom.setText("Bottom team (EAST)")
+        self.label_bottom.setAlignment(QtCore.Qt.AlignCenter)
+        self.image_bottom = QLabel(self)
+        self.image_bottom.setPixmap(QPixmap("logos/team1.png").scaled(100,100))
+        self.image_bottom.setAlignment(QtCore.Qt.AlignCenter)
+        self.image_bottom.show()
+        self.cloth_bottom = QComboBox()
+        self.cloth_bottom.addItems(self.teams)
+        self.cloth_bottom.activated.connect(
+            lambda: self.switchImage(self.cloth_bottom, self.image_bottom))
+        # Right (SOUTH)
+        self.label_right = QLabel(self)
+        self.label_right.setText("Right team (SOUTH)")
+        self.label_right.setAlignment(QtCore.Qt.AlignCenter)
+        self.image_right = QLabel(self)
+        self.image_right.setPixmap(QPixmap("logos/team1.png").scaled(100,100))
+        self.image_right.setAlignment(QtCore.Qt.AlignCenter)
+        self.image_right.show()
+        self.cloth_right = QComboBox()
+        self.cloth_right.addItems(self.teams)
+        self.cloth_right.activated.connect(
+            lambda: self.switchImage(self.cloth_right, self.image_right))
         # Top (WEST)
         self.label_top = QLabel(self)
         self.label_top.setText("Top team (WEST)")
@@ -74,60 +99,43 @@ class TableClothGenerator(QWidget):
         self.cloth_left.addItems(self.teams)
         self.cloth_left.activated.connect(
             lambda: self.switchImage(self.cloth_left, self.image_left))
-        # Right (SOUTH)
-        self.label_right = QLabel(self)
-        self.label_right.setText("Right team (SOUTH)")
-        self.label_right.setAlignment(QtCore.Qt.AlignCenter)
-        self.image_right = QLabel(self)
-        self.image_right.setPixmap(QPixmap("logos/team1.png").scaled(100,100))
-        self.image_right.setAlignment(QtCore.Qt.AlignCenter)
-        self.image_right.show()
-        self.cloth_right = QComboBox()
-        self.cloth_right.addItems(self.teams)
-        self.cloth_right.activated.connect(
-            lambda: self.switchImage(self.cloth_right, self.image_right))
-        # Bottom (EAST)
-        self.label_bottom = QLabel(self)
-        self.label_bottom.setText("Bottom team (EAST)")
-        self.label_bottom.setAlignment(QtCore.Qt.AlignCenter)
-        self.image_bottom = QLabel(self)
-        self.image_bottom.setPixmap(QPixmap("logos/team1.png").scaled(100,100))
-        self.image_bottom.setAlignment(QtCore.Qt.AlignCenter)
-        self.image_bottom.show()
-        self.cloth_bottom = QComboBox()
-        self.cloth_bottom.addItems(self.teams)
-        self.cloth_bottom.activated.connect(
-            lambda: self.switchImage(self.cloth_bottom, self.image_bottom))
+        # Technical lines
+        self.technical_lines = QCheckBox("Show Technical lines", self)
         # Generate button
         self.generate = QPushButton(self)
         self.generate.setText("Generate Tablecloth")
-        self.generate.clicked.connect(self.generateImage)
+        self.generate.clicked.connect(self.ConfirmDialog)
 
         # Create the layout
         hbox = QHBoxLayout(self)
+        self.setLayout(hbox)
         vbox1 = QVBoxLayout(self)
+        self.setLayout(vbox1)
         vbox2 = QVBoxLayout(self)
+        self.setLayout(vbox2)
         vbox1.setAlignment(QtCore.Qt.AlignCenter)
         vbox2.setAlignment(QtCore.Qt.AlignCenter)
-        # Vertical layout (Top, Left)
-        vbox1.addWidget(self.label_top)
-        vbox1.addWidget(self.image_top)
-        vbox1.addWidget(self.cloth_top)
-        vbox1.addWidget(self.label_left)
-        vbox1.addWidget(self.image_left)
-        vbox1.addWidget(self.cloth_left)
-        # Vertical layout 2 (Right, Bottom)
-        vbox2.addWidget(self.label_right)
-        vbox2.addWidget(self.image_right)
-        vbox2.addWidget(self.cloth_right)
-        vbox2.addWidget(self.label_bottom)
-        vbox2.addWidget(self.image_bottom)
-        vbox2.addWidget(self.cloth_bottom)
+        # Vertical layout (Bottom, right)
+        vbox1.addWidget(self.label_bottom)
+        vbox1.addWidget(self.image_bottom)
+        vbox1.addWidget(self.cloth_bottom)
+        vbox1.addWidget(self.label_right)
+        vbox1.addWidget(self.image_right)
+        vbox1.addWidget(self.cloth_right)
+        # Add the option for technical lines
+        vbox1.addWidget(self.technical_lines)
+        # Vertical layout 2 (Top, left)
+        vbox2.addWidget(self.label_top)
+        vbox2.addWidget(self.image_top)
+        vbox2.addWidget(self.cloth_top)
+        vbox2.addWidget(self.label_left)
+        vbox2.addWidget(self.image_left)
+        vbox2.addWidget(self.cloth_left)
+        # Add the generate button
+        vbox2.addWidget(self.generate)
         # Add the layouts to be show
         hbox.addLayout(vbox1)
         hbox.addLayout(vbox2)
-        # Add the generate button
-        hbox.addWidget(self.generate)
 
         # Create the window
         self.resize(200, 300)
@@ -137,18 +145,28 @@ class TableClothGenerator(QWidget):
         self.show()
 
     def switchImage(self, cloth, image):
+        # It shows you the team logo. No way you can miss those, right?
         team_id = cloth.currentIndex() + 1
         image.setPixmap(QPixmap(
             "logos/team%d.png" % team_id).scaled(100,100))
 
-    def waitingDialog(self):
+    def ConfirmDialog(self):
+        # Double check for double idiots
         mbox = QMessageBox()
 
         mbox.setWindowTitle("Tablecloth Generator")
-        mbox.setText("Generating Tablecloth...")
-        mbox.setStandardButtons(QMessageBox.Ok)
+        mbox.setText("Confirm your selection:")
+        mbox.setInformativeText("<strong>East:</strong> %s<br> \
+            <strong>South:</strong> %s <br> <strong>West:</strong> %s<br> \
+            <strong>North:</strong> %s" %
+            (self.cloth_bottom.currentText(), self.cloth_right.currentText(),
+             self.cloth_top.currentText(), self.cloth_left.currentText()))
+        mbox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
 
-        mbox.exec()
+        result = mbox.exec()
+        if result == QMessageBox.Ok:
+            # Confirm and go directly to generate the image.
+            self.generateImage()
 
     def GeneratedDialog(self):
         mbox = QMessageBox()
@@ -160,31 +178,34 @@ class TableClothGenerator(QWidget):
         mbox.exec()
 
     def generateImage(self):
-        self.waitingDialog()
 
         # Brings all the .pdn data
         tablecloth, sec_layers, teams_layers = gather_layers()
-        # Makes the top image visible
-        top_id = self.cloth_top.currentIndex() + 1
-        teams_layers["TEAM_%d" % top_id][1].visible = True
-        # Makes the left image visible
-        left_id = self.cloth_left.currentIndex() + 1
-        teams_layers["TEAM_%d" % left_id][0].visible = True
-        # Makes the right image visible
-        right_id = self.cloth_right.currentIndex() + 1
-        teams_layers["TEAM_%d" % right_id][2].visible = True
-        # Makes the bottom image visible
-        bottom_id = self.cloth_bottom.currentIndex() + 1
-        teams_layers["TEAM_%d" % bottom_id][3].visible = True
+        if self.technical_lines.isChecked():
+            sec_layers[2].visible = True
+
         # Compiles all the layers
         layers = []
         # Append all the non-team layers
         for sl in sec_layers:
             layers.append(sl)
-        # Now append all the team layers
-        for lt in teams_layers.values():
-                for il in lt:
-                    layers.append(il)
+
+        # Makes the top image visible
+        top_id = self.cloth_top.currentIndex() + 1
+        teams_layers["TEAM_%d" % top_id][1].visible = True
+        layers.append(teams_layers["TEAM_%d" % top_id][1])
+        # Makes the left image visible
+        left_id = self.cloth_left.currentIndex() + 1
+        teams_layers["TEAM_%d" % left_id][0].visible = True
+        layers.append(teams_layers["TEAM_%d" % left_id][0])
+        # Makes the right image visible
+        right_id = self.cloth_right.currentIndex() + 1
+        teams_layers["TEAM_%d" % right_id][2].visible = True
+        layers.append(teams_layers["TEAM_%d" % right_id])
+        # Makes the bottom image visible
+        bottom_id = self.cloth_bottom.currentIndex() + 1
+        teams_layers["TEAM_%d" % bottom_id][3].visible = True
+        layers.append(teams_layers["TEAM_%d" % bottom_id][3])
 
         tablecloth.layers = layers
 
@@ -208,7 +229,6 @@ class TableClothGenerator(QWidget):
 def main():
 
     app = QApplication(sys.argv)
-    app.setStyle("Material")
     ex = TableClothGenerator()
     sys.exit(app.exec())
 
