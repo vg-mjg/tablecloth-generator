@@ -2,51 +2,135 @@
 import sys
 import os
 from pathlib import Path
+# The __debug__ lines are ignored in the compilation
+if __debug__:
+    from timeit import default_timer as timer
 # Image manipulation libraries
 import layeredimage.io as li
 from PIL import Image
 # GUI libraries
 from PySide6 import QtCore
-from PySide6.QtWidgets import (QWidget, QApplication, QVBoxLayout, QHBoxLayout,
-    QComboBox, QLabel, QPushButton, QMessageBox, QCheckBox)
+from PySide6.QtWidgets import (QWidget, QMainWindow, QApplication, QVBoxLayout,
+    QHBoxLayout, QComboBox, QLabel, QPushButton, QMessageBox, QCheckBox,
+    QProgressBar, QSplashScreen)
 from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtCore import QObject, QRunnable, Qt, QThread, QThreadPool, Signal
 
 # Absolute path to the current folder as constant for easy access
 THISDIR = str(Path(__file__).resolve().parent)
 sys.path.insert(0, os.path.dirname(THISDIR))
 
-def gather_layers():
-    # Opens the .pdn file
-    get_tablecloth = li.openLayer_PDN(THISDIR + "\\league_tablecloth.pdn")
-    # Sets the team dictionary and start the counters
-    teams = {}
-    # It goes backwards
-    team_ids = 15
-    team_num = 0
-    num_layers = 1
-    # Get the three other layers
-    sec_layers = get_tablecloth.layers[:3]
-    # Ignores the first 3 layers since they are not needed
-    layers = get_tablecloth.layers[3:]
-    for layer in layers:
-        if team_ids == 1:
-            break # Gotta find a better way to do this
-        define_team = "TEAM_%d" % (team_ids - 1)
-        teams[define_team] = layers[team_num*4:num_layers*4]
-        team_ids -= 1
-        team_num += 1
-        num_layers += 1
+class Worker(QObject):
+    finished = Signal()
+    update_progress = Signal(int)
 
-    return get_tablecloth, sec_layers, teams
-
-class TableClothGenerator(QWidget):
-    def __init__(self):
+    def __init__(self, tablecloth, sec_layers, teams_layers, top_id, left_id,
+      right_id, bottom_id, technical_lines=False, parent=None):
         super().__init__()
+        self.tablecloth = tablecloth
+        self.sec_layers = sec_layers
+        self.teams_layers = teams_layers
+        self.top_id = top_id
+        self.left_id = left_id
+        self.right_id = right_id
+        self.bottom_id = bottom_id
+        self.technical_lines = technical_lines
+
+    def run(self):
+        # Compiles all the layers
+        if __debug__:
+            start = timer()
+        layers = []
+        # Make technical lines visible
+        if self.technical_lines:
+            self.sec_layers[2].visible = True
+        # Append all the non-team layers
+        for sl in self.sec_layers:
+            layers.append(sl)
+        self.update_progress.emit(10)
+
+        # Makes the top image visible
+        self.top_id += 1
+        self.teams_layers["TEAM_%d" % self.top_id][1].visible = True
+        layers.append(self.teams_layers["TEAM_%d" % self.top_id][1])
+        # Makes the left image visible
+        self.left_id += 1
+        self.teams_layers["TEAM_%d" % self.left_id][0].visible = True
+        layers.append(self.teams_layers["TEAM_%d" % self.left_id][0])
+        # Makes the right image visible
+        self.right_id += 1
+        self.teams_layers["TEAM_%d" % self.right_id][2].visible = True
+        layers.append(self.teams_layers["TEAM_%d" % self.right_id])
+        # Makes the bottom image visible
+        self.bottom_id += 1
+        self.teams_layers["TEAM_%d" % self.bottom_id][3].visible = True
+        layers.append(self.teams_layers["TEAM_%d" % self.bottom_id][3])
+
+        self.tablecloth.layers = layers
+
+        self.update_progress.emit(40)
+
+        # Let's check the file does not exist first
+        if os.path.exists(THISDIR+"/Table_Dif.jpg"):
+            os.remove(THISDIR+"/Table_Dif.jpg")
+
+        self.update_progress.emit(50)
+        # This is really annoying but thus far the only "easy way"
+        # To create the image is to convert it to .png, open it,
+        # remove the alpha channel and then save it as .jpg
+        self.tablecloth.getFlattenLayers().save(THISDIR+"/Table_Dif.png")
+        new_jpg = Image.open(THISDIR+"/Table_Dif.png")
+        self.update_progress.emit(75)
+        final_tablecloth = new_jpg.convert("RGB")
+        final_tablecloth.save(THISDIR+"/Table_Dif.jpg")
+        self.update_progress.emit(90)
+        # We finally remove the .png since it's useless
+        os.remove(THISDIR+"/Table_Dif.png")
+        # If it exists, it means that the process was successful
+        if os.path.exists(THISDIR+"/Table_Dif.jpg"):
+            if __debug__:
+                end = timer()
+                print("This took %d seconds." % (end - start))
+            self.update_progress.emit(100)
+            self.finished.emit()
+
+class TableClothGenerator(QMainWindow):
+    def __init__(self, parent=None):
+
+        super().__init__(parent)
+
+        # Main UI settings
+        self.setWindowTitle('Tablecloth Generator')
+        self.setWindowIcon(QIcon('icon.ico'))
+        self.centralWidget = QWidget()
+
+        self.setCentralWidget(self.centralWidget)
+        self.resize(350, 350)
 
         self.MainUI()
 
     def MainUI(self):
 
+        # Loading this big ass file at the start to save time
+        self.tablecloth = li.openLayer_PDN(THISDIR + "\\league_tablecloth.pdn")
+        # Sets the team dictionary and start the counters
+        self.teams_layers = {}
+        # It goes backwards
+        team_ids = 15
+        team_num = 0
+        num_layers = 1
+        # Get the three other layers
+        self.sec_layers = self.tablecloth.layers[:3]
+        # Ignores the first 3 layers since they are not needed
+        layers = self.tablecloth.layers[3:]
+        for layer in layers:
+            if team_ids == 1:
+                break # Gotta find a better way to do this
+            define_team = "TEAM_%d" % (team_ids - 1)
+            self.teams_layers[define_team] = layers[team_num*4:num_layers*4]
+            team_ids -= 1
+            team_num += 1
+            num_layers += 1
 
         # Lists the teams
         self.teams = ["Riichi Dicks Inc.", "U.M.A.", "Riichima Financial",
@@ -54,54 +138,55 @@ class TableClothGenerator(QWidget):
             "A.U.T.I.S.M.", "Mahjong Musketeers", "天団", "Jantama Judgement",
             "Bandora Bandits", "Akochan's Acolytes", "Freed Jiangshis"]
         # Set up the GUI
+        self.statusBar().showMessage("Remember: Rig responsibly.")
         # Bottom (EAST)
-        self.label_bottom = QLabel(self)
-        self.label_bottom.setText("Bottom team (EAST)")
-        self.label_bottom.setAlignment(QtCore.Qt.AlignCenter)
-        self.image_bottom = QLabel(self)
-        self.image_bottom.setPixmap(QPixmap("logos/team1.png").scaled(100,100))
-        self.image_bottom.setAlignment(QtCore.Qt.AlignCenter)
-        self.image_bottom.show()
-        self.cloth_bottom = QComboBox()
-        self.cloth_bottom.addItems(self.teams)
-        self.cloth_bottom.activated.connect(
-            lambda: self.switchImage(self.cloth_bottom, self.image_bottom))
+        self.label_east = QLabel(self)
+        self.label_east.setText("Bottom team (EAST)")
+        self.label_east.setAlignment(QtCore.Qt.AlignCenter)
+        self.image_east = QLabel(self)
+        self.image_east.setPixmap(QPixmap("logos/team1.png").scaled(100,100))
+        self.image_east.setAlignment(QtCore.Qt.AlignCenter)
+        self.image_east.show()
+        self.cloth_east = QComboBox()
+        self.cloth_east.addItems(self.teams)
+        self.cloth_east.activated.connect(
+            lambda: self.switchImage(self.cloth_east, self.image_east))
         # Right (SOUTH)
-        self.label_right = QLabel(self)
-        self.label_right.setText("Right team (SOUTH)")
-        self.label_right.setAlignment(QtCore.Qt.AlignCenter)
-        self.image_right = QLabel(self)
-        self.image_right.setPixmap(QPixmap("logos/team1.png").scaled(100,100))
-        self.image_right.setAlignment(QtCore.Qt.AlignCenter)
-        self.image_right.show()
-        self.cloth_right = QComboBox()
-        self.cloth_right.addItems(self.teams)
-        self.cloth_right.activated.connect(
-            lambda: self.switchImage(self.cloth_right, self.image_right))
+        self.label_south = QLabel(self)
+        self.label_south.setText("Right team (SOUTH)")
+        self.label_south.setAlignment(QtCore.Qt.AlignCenter)
+        self.image_south = QLabel(self)
+        self.image_south.setPixmap(QPixmap("logos/team1.png").scaled(100,100))
+        self.image_south.setAlignment(QtCore.Qt.AlignCenter)
+        self.image_south.show()
+        self.cloth_south = QComboBox()
+        self.cloth_south.addItems(self.teams)
+        self.cloth_south.activated.connect(
+            lambda: self.switchImage(self.cloth_south, self.image_south))
         # Top (WEST)
-        self.label_top = QLabel(self)
-        self.label_top.setText("Top team (WEST)")
-        self.label_top.setAlignment(QtCore.Qt.AlignCenter)
-        self.image_top = QLabel(self)
-        self.image_top.setPixmap(QPixmap("logos/team1.png").scaled(100,100))
-        self.image_top.setAlignment(QtCore.Qt.AlignCenter)
-        self.image_top.show()
-        self.cloth_top = QComboBox()
-        self.cloth_top.addItems(self.teams)
-        self.cloth_top.activated.connect(
-            lambda: self.switchImage(self.cloth_top, self.image_top))
+        self.label_west = QLabel(self)
+        self.label_west.setText("Top team (WEST)")
+        self.label_west.setAlignment(QtCore.Qt.AlignCenter)
+        self.image_west = QLabel(self)
+        self.image_west.setPixmap(QPixmap("logos/team1.png").scaled(100,100))
+        self.image_west.setAlignment(QtCore.Qt.AlignCenter)
+        self.image_west.show()
+        self.cloth_west = QComboBox()
+        self.cloth_west.addItems(self.teams)
+        self.cloth_west.activated.connect(
+            lambda: self.switchImage(self.cloth_west, self.image_west))
         # Left (NORTH)
-        self.label_left = QLabel(self)
-        self.label_left.setText("Left team (NORTH)")
-        self.label_left.setAlignment(QtCore.Qt.AlignCenter)
-        self.image_left = QLabel(self)
-        self.image_left.setPixmap(QPixmap("logos/team1.png").scaled(100,100))
-        self.image_left.setAlignment(QtCore.Qt.AlignCenter)
-        self.image_left.show()
-        self.cloth_left = QComboBox()
-        self.cloth_left.addItems(self.teams)
-        self.cloth_left.activated.connect(
-            lambda: self.switchImage(self.cloth_left, self.image_left))
+        self.label_north = QLabel(self)
+        self.label_north.setText("Left team (NORTH)")
+        self.label_north.setAlignment(QtCore.Qt.AlignCenter)
+        self.image_north = QLabel(self)
+        self.image_north.setPixmap(QPixmap("logos/team1.png").scaled(100,100))
+        self.image_north.setAlignment(QtCore.Qt.AlignCenter)
+        self.image_north.show()
+        self.cloth_north = QComboBox()
+        self.cloth_north.addItems(self.teams)
+        self.cloth_north.activated.connect(
+            lambda: self.switchImage(self.cloth_north, self.image_north))
         # Technical lines
         self.technical_lines = QCheckBox("Show Technical lines", self)
         # Generate button
@@ -119,32 +204,29 @@ class TableClothGenerator(QWidget):
         vbox1.setAlignment(QtCore.Qt.AlignCenter)
         vbox2.setAlignment(QtCore.Qt.AlignCenter)
         # Vertical layout (Bottom, right)
-        vbox1.addWidget(self.label_bottom)
-        vbox1.addWidget(self.image_bottom)
-        vbox1.addWidget(self.cloth_bottom)
-        vbox1.addWidget(self.label_right)
-        vbox1.addWidget(self.image_right)
-        vbox1.addWidget(self.cloth_right)
+        vbox1.addWidget(self.label_east)
+        vbox1.addWidget(self.image_east)
+        vbox1.addWidget(self.cloth_east)
+        vbox1.addWidget(self.label_south)
+        vbox1.addWidget(self.image_south)
+        vbox1.addWidget(self.cloth_south)
         # Add the option for technical lines
         vbox1.addWidget(self.technical_lines)
         # Vertical layout 2 (Top, left)
-        vbox2.addWidget(self.label_top)
-        vbox2.addWidget(self.image_top)
-        vbox2.addWidget(self.cloth_top)
-        vbox2.addWidget(self.label_left)
-        vbox2.addWidget(self.image_left)
-        vbox2.addWidget(self.cloth_left)
+        vbox2.addWidget(self.label_west)
+        vbox2.addWidget(self.image_west)
+        vbox2.addWidget(self.cloth_west)
+        vbox2.addWidget(self.label_north)
+        vbox2.addWidget(self.image_north)
+        vbox2.addWidget(self.cloth_north)
         # Add the generate button
         vbox2.addWidget(self.generate)
         # Add the layouts to be show
         hbox.addLayout(vbox1)
         hbox.addLayout(vbox2)
+        self.centralWidget.setLayout(hbox)
 
         # Create the window
-        self.resize(200, 300)
-        self.setWindowTitle('Tablecloth Generator')
-        self.setWindowIcon(QIcon('icon.ico'))
-
         self.show()
 
     def switchImage(self, cloth, image):
@@ -161,17 +243,46 @@ class TableClothGenerator(QWidget):
         mbox.setText("Confirm your selection:")
         mbox.setInformativeText("<strong>East:</strong> %s<br> \
             <strong>South:</strong> %s <br> <strong>West:</strong> %s<br> \
-            <strong>North:</strong> %s" %
-            (self.cloth_bottom.currentText(), self.cloth_right.currentText(),
-             self.cloth_top.currentText(), self.cloth_left.currentText()))
+            <strong>North:</strong> %s %s" %
+            (self.cloth_east.currentText(), self.cloth_south.currentText(),
+             self.cloth_west.currentText(), self.cloth_north.currentText(),
+             "<br><b>Technical Lines enabled.</b>" if self.technical_lines\
+             .isChecked() else ""))
         mbox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
 
         result = mbox.exec()
         if result == QMessageBox.Ok:
+            # Freeze the program to avoid a dumbass clicking several times
+            # and crashing
+            self.statusBar().showMessage('Generating image...')
+            self.progress_bar = QProgressBar()
+            self.progress_bar.minimum = 0
+            self.progress_bar.maximum = 100
+            self.progress_bar.setValue(0)
+            self.progress_bar.setTextVisible(False)
+            self.progress_bar.setGeometry(50, 50, 10, 10)
+            self.progress_bar.setAlignment(QtCore.Qt.AlignRight)
+            self.progress_bar.adjustSize()
+            self.statusBar().addPermanentWidget(self.progress_bar)
+            self.cloth_east.setEnabled(False)
+            self.cloth_south.setEnabled(False)
+            self.cloth_west.setEnabled(False)
+            self.cloth_north.setEnabled(False)
+            self.generate.setEnabled(False)
             # Confirm and go directly to generate the image.
             self.generateImage()
 
     def GeneratedDialog(self):
+
+        self.statusBar().showMessage('Tablecloth generated. Happy rigging!')
+        self.statusBar().removeWidget(self.progress_bar)
+        # Now you can go back to rigging
+        self.cloth_east.setEnabled(True)
+        self.cloth_south.setEnabled(True)
+        self.cloth_west.setEnabled(True)
+        self.cloth_north.setEnabled(True)
+        self.generate.setEnabled(True)
+
         mbox = QMessageBox()
 
         mbox.setWindowTitle("Tablecloth Generator")
@@ -180,59 +291,40 @@ class TableClothGenerator(QWidget):
 
         mbox.exec()
 
+    def UpdateStatus(self, status):
+        self.progress_bar.setValue(status)
+
     def generateImage(self):
 
-        # Brings all the .pdn data
-        tablecloth, sec_layers, teams_layers = gather_layers()
-        if self.technical_lines.isChecked():
-            sec_layers[2].visible = True
-
-        # Compiles all the layers
-        layers = []
-        # Append all the non-team layers
-        for sl in sec_layers:
-            layers.append(sl)
-
-        # Makes the top image visible
-        top_id = self.cloth_top.currentIndex() + 1
-        teams_layers["TEAM_%d" % top_id][1].visible = True
-        layers.append(teams_layers["TEAM_%d" % top_id][1])
-        # Makes the left image visible
-        left_id = self.cloth_left.currentIndex() + 1
-        teams_layers["TEAM_%d" % left_id][0].visible = True
-        layers.append(teams_layers["TEAM_%d" % left_id][0])
-        # Makes the right image visible
-        right_id = self.cloth_right.currentIndex() + 1
-        teams_layers["TEAM_%d" % right_id][2].visible = True
-        layers.append(teams_layers["TEAM_%d" % right_id])
-        # Makes the bottom image visible
-        bottom_id = self.cloth_bottom.currentIndex() + 1
-        teams_layers["TEAM_%d" % bottom_id][3].visible = True
-        layers.append(teams_layers["TEAM_%d" % bottom_id][3])
-
-        tablecloth.layers = layers
-
-        # Let's check the file does not exist first
-        if os.path.exists(THISDIR+"/Table_Dif.jpg"):
-            os.remove(THISDIR+"/Table_Dif.jpg")
-        # This is really annoying but thus far the only "easy way"
-        # To create the image is to convert it to .png, open it,
-        # remove the alpha channel and then save it as .jpg
-        tablecloth.getFlattenLayers().save(THISDIR+"/Table_Dif.png")
-        new_jpg = Image.open(THISDIR+"/Table_Dif.png")
-        final_tablecloth = new_jpg.convert("RGB")
-        final_tablecloth.save(THISDIR+"/Table_Dif.jpg")
-        # We finally remove the .png since it's useless
-        os.remove(THISDIR+"/Table_Dif.png")
-        # If it exists, it means that the process was successful
-        if os.path.exists(THISDIR+"/Table_Dif.jpg"):
-            self.GeneratedDialog()
-
+        self.thread = QThread()
+        self.worker = Worker(self.tablecloth, self.sec_layers,
+           self.teams_layers, self.cloth_west.currentIndex(),
+           self.cloth_south.currentIndex(), self.cloth_north.currentIndex(),
+           self.cloth_east.currentIndex(), self.technical_lines.isChecked())
+        self.worker.moveToThread(self.thread)
+        self.thread.started.connect(self.worker.run)
+        self.worker.update_progress.connect(self.UpdateStatus)
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
+        self.thread.finished.connect(self.GeneratedDialog)
+        self.thread.start()
 
 def main():
 
     app = QApplication(sys.argv)
+    pixmap = QPixmap("icon.ico")
+    splash = QSplashScreen(pixmap)
+    splash.show()
+    if __debug__:
+        start = timer()
     ex = TableClothGenerator()
+    app.processEvents()
+    ex.show()
+    splash.finish(ex)
+    if __debug__:
+        end = timer()
+        print("This took %d seconds." % (end - start))
     sys.exit(app.exec())
 
 
