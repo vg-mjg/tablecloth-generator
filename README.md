@@ -14,6 +14,10 @@ This simple tool just lets you pick up the teams in their according seat and the
 
 Download it from [releases](https://github.com/vg-mjg/tablecloth-generator/releases/), extract and run the .exe file.
 
+*Will there be Linux releases?*
+
+Probably not, unless someone else compiles it. You're welcome to do it in a Pull Request.
+
 ## Development
 
 It was tested and compiled on Python 3.9. It is recommended to use [virtualenv](https://virtualenvwrapper.readthedocs.io/en/latest/) for testing/compiling.
@@ -28,7 +32,7 @@ Then run the `requirements.txt` to install the dependencies.
 pip install -r requirements.txt
 ```
 
-Finally run the `generator.py`
+Finally run the `generator.py`:
 
 ```sh
 python generator.py
@@ -36,7 +40,18 @@ python generator.py
 
 #### Building for source
 
-First rename `Tablecloth generator.spec.template` to `Tablecloth generator.spec`. Then edit the empty paths (marked as `<YOUR PATH>` and `<YOUR PYTHON/VIRTUALENV PATH>`) and finally run it through `pyinstaller`:
+First rename `Tablecloth generator.spec.template` to `Tablecloth generator.spec`. Then edit the empty paths (marked as `<YOUR PATH>` and `<YOUR PYTHON/VIRTUALENV PATH>`). Then, add the optimization lines:
+
+**(For Windows)**
+```sh
+set PYTHONOPTIMIZE=1
+```
+**(For Linux)**
+```sh
+PYTHONOPTIMIZE=1
+```
+
+Finally run it through `pyinstaller`:
 
 ```sh
 pyinstaller "Tablecloth generator.spec"
