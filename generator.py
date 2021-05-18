@@ -1,6 +1,7 @@
 # Python libraries
 import sys
 import os
+import json
 from pathlib import Path
 # The __debug__ lines are ignored in the compilation
 if __debug__:
@@ -12,28 +13,29 @@ from PIL import Image
 from PySide6 import QtCore
 from PySide6.QtWidgets import (QWidget, QMainWindow, QApplication, QVBoxLayout,
     QHBoxLayout, QComboBox, QLabel, QPushButton, QMessageBox, QCheckBox,
-    QProgressBar, QSplashScreen)
-from PySide6.QtGui import QIcon, QPixmap
-from PySide6.QtCore import QObject, QRunnable, Qt, QThread, QThreadPool, Signal
+    QProgressBar, QSplashScreen, QStyledItemDelegate, QCompleter, QLineEdit)
+from PySide6.QtGui import QIcon, QPixmap, QScreen
+from PySide6.QtCore import QObject, Qt, QThread, Signal
 
 # Absolute path to the current folder as constant for easy access
 THISDIR = str(Path(__file__).resolve().parent)
 sys.path.insert(0, os.path.dirname(THISDIR))
 
+
 class Worker(QObject):
     finished = Signal()
     update_progress = Signal(int)
 
-    def __init__(self, tablecloth, sec_layers, teams_layers, top_id, left_id,
-      right_id, bottom_id, technical_lines=False, parent=None):
+    def __init__(self, tablecloth, sec_layers, teams_layers, east_id, south_id,
+        west_id, north_id, technical_lines=False, parent=None):
         super().__init__()
         self.tablecloth = tablecloth
         self.sec_layers = sec_layers
         self.teams_layers = teams_layers
-        self.top_id = top_id
-        self.left_id = left_id
-        self.right_id = right_id
-        self.bottom_id = bottom_id
+        self.east_id = east_id
+        self.south_id = south_id
+        self.west_id = west_id
+        self.north_id = north_id
         self.technical_lines = technical_lines
 
     def run(self):
@@ -50,21 +52,17 @@ class Worker(QObject):
         self.update_progress.emit(10)
 
         # Makes the top image visible
-        self.top_id += 1
-        self.teams_layers["TEAM_%d" % self.top_id][1].visible = True
-        layers.append(self.teams_layers["TEAM_%d" % self.top_id][1])
+        self.teams_layers["TEAM_%d" % self.west_id][1].visible = True
+        layers.append(self.teams_layers["TEAM_%d" % self.west_id][1])
         # Makes the left image visible
-        self.left_id += 1
-        self.teams_layers["TEAM_%d" % self.left_id][0].visible = True
-        layers.append(self.teams_layers["TEAM_%d" % self.left_id][0])
+        self.teams_layers["TEAM_%d" % self.north_id][0].visible = True
+        layers.append(self.teams_layers["TEAM_%d" % self.north_id][0])
         # Makes the right image visible
-        self.right_id += 1
-        self.teams_layers["TEAM_%d" % self.right_id][2].visible = True
-        layers.append(self.teams_layers["TEAM_%d" % self.right_id])
+        self.teams_layers["TEAM_%d" % self.south_id][2].visible = True
+        layers.append(self.teams_layers["TEAM_%d" % self.south_id])
         # Makes the bottom image visible
-        self.bottom_id += 1
-        self.teams_layers["TEAM_%d" % self.bottom_id][3].visible = True
-        layers.append(self.teams_layers["TEAM_%d" % self.bottom_id][3])
+        self.teams_layers["TEAM_%d" % self.east_id][3].visible = True
+        layers.append(self.teams_layers["TEAM_%d" % self.east_id][3])
 
         self.tablecloth.layers = layers
 
@@ -94,6 +92,7 @@ class Worker(QObject):
             self.update_progress.emit(100)
             self.finished.emit()
 
+
 class TableClothGenerator(QMainWindow):
     def __init__(self, parent=None):
 
@@ -106,6 +105,7 @@ class TableClothGenerator(QMainWindow):
 
         self.setCentralWidget(self.centralWidget)
         self.resize(350, 350)
+        self.center()
 
         self.MainUI()
 
@@ -132,60 +132,88 @@ class TableClothGenerator(QMainWindow):
             team_num += 1
             num_layers += 1
 
-        # Lists the teams
-        self.teams = ["Riichi Dicks Inc.", "U.M.A.", "Riichima Financial",
-            "CoolDogz", "Nyakuza", "Kani Kartel", "Ebola Bois",
-            "A.U.T.I.S.M.", "Mahjong Musketeers", "天団", "Jantama Judgement",
-            "Bandora Bandits", "Akochan's Acolytes", "Freed Jiangshis"]
+        # Obtain and List the teams
+        fp_teams = open(THISDIR + "\\team-information.json", "r",
+                            encoding="utf-8").read()
+        fp_teams = json.loads(fp_teams)
+        self.teams = fp_teams["teams"]
+        self.players = fp_teams["players"]
+        self.players_combobox = QComboBox()
+        for team, members in self.players.items():
+            for member in members:
+                self.players_combobox.addItem(member, team)
+        self.players_combobox.setEditable(True)
+        self.players_combobox.completer()\
+                             .setCompletionMode(QCompleter.PopupCompletion)
+        self.players_combobox.setInsertPolicy(QComboBox.NoInsert)
         # Set up the GUI
         self.statusBar().showMessage("Remember: Rig responsibly.")
         # Bottom (EAST)
         self.label_east = QLabel(self)
-        self.label_east.setText("Bottom team (EAST)")
+        self.label_east.setText("East Seat")
         self.label_east.setAlignment(QtCore.Qt.AlignCenter)
         self.image_east = QLabel(self)
         self.image_east.setPixmap(QPixmap("logos/team1.png").scaled(100,100))
         self.image_east.setAlignment(QtCore.Qt.AlignCenter)
-        self.image_east.show()
+        self.search_east = QLineEdit()
+        self.search_east.setAlignment(QtCore.Qt.AlignCenter)
+        self.search_east.editingFinished.connect(
+            lambda: self.searchPlayer(self.search_east.text(),
+                                      self.cloth_east))
         self.cloth_east = QComboBox()
-        self.cloth_east.addItems(self.teams)
-        self.cloth_east.activated.connect(
+        self.cloth_east.setModel(self.players_combobox.model())
+        self.cloth_east.currentIndexChanged.connect(
             lambda: self.switchImage(self.cloth_east, self.image_east))
         # Right (SOUTH)
         self.label_south = QLabel(self)
-        self.label_south.setText("Right team (SOUTH)")
+        self.label_south.setText("South Seat")
         self.label_south.setAlignment(QtCore.Qt.AlignCenter)
         self.image_south = QLabel(self)
         self.image_south.setPixmap(QPixmap("logos/team1.png").scaled(100,100))
         self.image_south.setAlignment(QtCore.Qt.AlignCenter)
         self.image_south.show()
+        self.search_south = QLineEdit()
+        self.search_south.setAlignment(QtCore.Qt.AlignCenter)
+        self.search_south.editingFinished.connect(
+            lambda: self.searchPlayer(self.search_south.text(),
+                                      self.cloth_south))
         self.cloth_south = QComboBox()
-        self.cloth_south.addItems(self.teams)
-        self.cloth_south.activated.connect(
+        self.cloth_south.setModel(self.players_combobox.model())
+        self.cloth_south.currentIndexChanged.connect(
             lambda: self.switchImage(self.cloth_south, self.image_south))
         # Top (WEST)
         self.label_west = QLabel(self)
-        self.label_west.setText("Top team (WEST)")
+        self.label_west.setText("West Seat")
         self.label_west.setAlignment(QtCore.Qt.AlignCenter)
         self.image_west = QLabel(self)
         self.image_west.setPixmap(QPixmap("logos/team1.png").scaled(100,100))
         self.image_west.setAlignment(QtCore.Qt.AlignCenter)
         self.image_west.show()
         self.cloth_west = QComboBox()
-        self.cloth_west.addItems(self.teams)
-        self.cloth_west.activated.connect(
+        self.search_west = QLineEdit()
+        self.search_west.setAlignment(QtCore.Qt.AlignCenter)
+        self.search_west.editingFinished.connect(
+            lambda: self.searchPlayer(self.search_west.text(),
+                                      self.cloth_west))
+        self.cloth_west.setModel(self.players_combobox.model())
+        self.cloth_west.currentIndexChanged.connect(
             lambda: self.switchImage(self.cloth_west, self.image_west))
         # Left (NORTH)
         self.label_north = QLabel(self)
-        self.label_north.setText("Left team (NORTH)")
+        self.label_north.setText("North Seat")
         self.label_north.setAlignment(QtCore.Qt.AlignCenter)
         self.image_north = QLabel(self)
         self.image_north.setPixmap(QPixmap("logos/team1.png").scaled(100,100))
         self.image_north.setAlignment(QtCore.Qt.AlignCenter)
         self.image_north.show()
         self.cloth_north = QComboBox()
-        self.cloth_north.addItems(self.teams)
-        self.cloth_north.activated.connect(
+        self.search_north = QLineEdit()
+        self.search_north.setAlignment(QtCore.Qt.AlignCenter)
+        self.search_north.editingFinished.connect(
+            lambda: self.searchPlayer(self.search_north.text(),
+                                      self.cloth_north))
+        self.cloth_north.setModel(self.players_combobox.model())
+        self.cloth_north.currentIndexChanged.connect(
             lambda: self.switchImage(self.cloth_north, self.image_north))
         # Technical lines
         self.technical_lines = QCheckBox("Show Technical lines", self)
@@ -206,18 +234,22 @@ class TableClothGenerator(QMainWindow):
         # Vertical layout (Bottom, right)
         vbox1.addWidget(self.label_east)
         vbox1.addWidget(self.image_east)
+        vbox1.addWidget(self.search_east)
         vbox1.addWidget(self.cloth_east)
         vbox1.addWidget(self.label_south)
         vbox1.addWidget(self.image_south)
+        vbox1.addWidget(self.search_south)
         vbox1.addWidget(self.cloth_south)
         # Add the option for technical lines
         vbox1.addWidget(self.technical_lines)
         # Vertical layout 2 (Top, left)
         vbox2.addWidget(self.label_west)
         vbox2.addWidget(self.image_west)
+        vbox2.addWidget(self.search_west)
         vbox2.addWidget(self.cloth_west)
         vbox2.addWidget(self.label_north)
         vbox2.addWidget(self.image_north)
+        vbox2.addWidget(self.search_north)
         vbox2.addWidget(self.cloth_north)
         # Add the generate button
         vbox2.addWidget(self.generate)
@@ -231,9 +263,17 @@ class TableClothGenerator(QMainWindow):
 
     def switchImage(self, cloth, image):
         # It shows you the team logo. No way you can miss those, right?
-        team_id = cloth.currentIndex() + 1
+        team_id = self.searchTeamID(cloth, True)
         image.setPixmap(QPixmap(
             "logos/team%d.png" % team_id).scaled(100,100))
+
+    def searchPlayer(self, text, combobox):
+        # It even searches the player for you. What more could you want?
+        search_index = combobox.findText(text, QtCore.Qt.MatchContains)
+        if search_index == -1:
+            QMessageBox.warning(self, "Error", "No player found")
+        else:
+            combobox.setCurrentIndex(search_index)
 
     def ConfirmDialog(self):
         # Double check for double idiots
@@ -241,11 +281,17 @@ class TableClothGenerator(QMainWindow):
 
         mbox.setWindowTitle("Tablecloth Generator")
         mbox.setText("Confirm your selection:")
-        mbox.setInformativeText("<strong>East:</strong> %s<br> \
-            <strong>South:</strong> %s <br> <strong>West:</strong> %s<br> \
-            <strong>North:</strong> %s %s" %
-            (self.cloth_east.currentText(), self.cloth_south.currentText(),
-             self.cloth_west.currentText(), self.cloth_north.currentText(),
+        mbox.setInformativeText("<strong>East:</strong> %s <i>(%s)</i><br> \
+            <strong>South:</strong> %s <i>(%s)</i><br> <strong>West:</strong>\
+            %s <i>(%s)</i><br> <strong>North:</strong> %s <i>(%s)</i> %s" %
+            (self.cloth_east.currentText(),
+             self.teams[self.searchTeamID(self.cloth_east)],
+             self.cloth_south.currentText(),
+             self.teams[self.searchTeamID(self.cloth_south)],
+             self.cloth_west.currentText(),
+             self.teams[self.searchTeamID(self.cloth_west)],
+             self.cloth_north.currentText(),
+             self.teams[self.searchTeamID(self.cloth_north)],
              "<br><b>Technical Lines enabled.</b>" if self.technical_lines\
              .isChecked() else ""))
         mbox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
@@ -265,9 +311,13 @@ class TableClothGenerator(QMainWindow):
             self.progress_bar.adjustSize()
             self.statusBar().addPermanentWidget(self.progress_bar)
             self.cloth_east.setEnabled(False)
+            self.search_east.setEnabled(False)
             self.cloth_south.setEnabled(False)
+            self.search_south.setEnabled(False)
             self.cloth_west.setEnabled(False)
+            self.search_west.setEnabled(False)
             self.cloth_north.setEnabled(False)
+            self.search_north.setEnabled(False)
             self.generate.setEnabled(False)
             # Confirm and go directly to generate the image.
             self.generateImage()
@@ -278,9 +328,13 @@ class TableClothGenerator(QMainWindow):
         self.statusBar().removeWidget(self.progress_bar)
         # Now you can go back to rigging
         self.cloth_east.setEnabled(True)
+        self.search_east.setEnabled(True)
         self.cloth_south.setEnabled(True)
+        self.search_south.setEnabled(True)
         self.cloth_west.setEnabled(True)
+        self.search_west.setEnabled(True)
         self.cloth_north.setEnabled(True)
+        self.search_north.setEnabled(True)
         self.generate.setEnabled(True)
 
         mbox = QMessageBox()
@@ -297,10 +351,13 @@ class TableClothGenerator(QMainWindow):
     def generateImage(self):
 
         self.thread = QThread()
+        east_id = self.searchTeamID(self.cloth_east, True)
+        south_id = self.searchTeamID(self.cloth_south, True)
+        west_id = self.searchTeamID(self.cloth_west, True)
+        north_id = self.searchTeamID(self.cloth_north, True)
         self.worker = Worker(self.tablecloth, self.sec_layers,
-           self.teams_layers, self.cloth_west.currentIndex(),
-           self.cloth_south.currentIndex(), self.cloth_north.currentIndex(),
-           self.cloth_east.currentIndex(), self.technical_lines.isChecked())
+           self.teams_layers, east_id, south_id, west_id, north_id,
+           self.technical_lines.isChecked())
         self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.run)
         self.worker.update_progress.connect(self.UpdateStatus)
@@ -309,6 +366,17 @@ class TableClothGenerator(QMainWindow):
         self.thread.finished.connect(self.thread.deleteLater)
         self.thread.finished.connect(self.GeneratedDialog)
         self.thread.start()
+
+    def searchTeamID(self, cloth, plus_one=False):
+        team_id = self.teams.index(cloth.itemData(cloth.currentIndex()))
+        if plus_one:
+            team_id += 1
+        return team_id
+
+    def center(self):
+        qr = self.frameGeometry()
+        cp = QScreen().availableGeometry().center()
+        qr.moveCenter(cp)
 
 def main():
 
