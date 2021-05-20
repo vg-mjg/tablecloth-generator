@@ -44,27 +44,21 @@ class Worker(QObject):
             start = timer()
         layers = []
         # Make technical lines visible
-        if self.technical_lines:
-            self.sec_layers[2].visible = True
         # Append all the non-team layers
-        for sl in self.sec_layers:
-            layers.append(sl)
+        layers.append(self.sec_layers[0].image)
+        layers.append(self.sec_layers[1].image)
+        if self.technical_lines:
+            layers.append(self.sec_layers[2].image)
         self.update_progress.emit(10)
 
         # Makes the top image visible
-        self.teams_layers["TEAM_%d" % self.west_id][1].visible = True
-        layers.append(self.teams_layers["TEAM_%d" % self.west_id][1])
+        layers.append(self.teams_layers["TEAM_%d" % self.west_id][1].image)
         # Makes the left image visible
-        self.teams_layers["TEAM_%d" % self.north_id][0].visible = True
-        layers.append(self.teams_layers["TEAM_%d" % self.north_id][0])
+        layers.append(self.teams_layers["TEAM_%d" % self.north_id][0].image)
         # Makes the right image visible
-        self.teams_layers["TEAM_%d" % self.south_id][2].visible = True
-        layers.append(self.teams_layers["TEAM_%d" % self.south_id])
+        layers.append(self.teams_layers["TEAM_%d" % self.south_id][2].image)
         # Makes the bottom image visible
-        self.teams_layers["TEAM_%d" % self.east_id][3].visible = True
-        layers.append(self.teams_layers["TEAM_%d" % self.east_id][3])
-
-        self.tablecloth.layers = layers
+        layers.append(self.teams_layers["TEAM_%d" % self.east_id][3].image)
 
         self.update_progress.emit(40)
 
@@ -73,17 +67,15 @@ class Worker(QObject):
             os.remove(THISDIR+"/Table_Dif.jpg")
 
         self.update_progress.emit(50)
-        # This is really annoying but thus far the only "easy way"
-        # To create the image is to convert it to .png, open it,
-        # remove the alpha channel and then save it as .jpg
-        self.tablecloth.getFlattenLayers().save(THISDIR+"/Table_Dif.png")
-        new_jpg = Image.open(THISDIR+"/Table_Dif.png")
+        # Create a new image and save the layers
+        final_tablecloth = Image.new("RGB", layers[0].size)
+        # Paste the layers onto the tablecloth
+        for ly in layers:
+            final_tablecloth.paste(ly, (0,0), ly)
         self.update_progress.emit(75)
-        final_tablecloth = new_jpg.convert("RGB")
+        # Save
         final_tablecloth.save(THISDIR+"/Table_Dif.jpg")
         self.update_progress.emit(90)
-        # We finally remove the .png since it's useless
-        os.remove(THISDIR+"/Table_Dif.png")
         # If it exists, it means that the process was successful
         if os.path.exists(THISDIR+"/Table_Dif.jpg"):
             if __debug__:
@@ -310,15 +302,7 @@ class TableClothGenerator(QMainWindow):
             self.progress_bar.setAlignment(QtCore.Qt.AlignRight)
             self.progress_bar.adjustSize()
             self.statusBar().addPermanentWidget(self.progress_bar)
-            self.cloth_east.setEnabled(False)
-            self.search_east.setEnabled(False)
-            self.cloth_south.setEnabled(False)
-            self.search_south.setEnabled(False)
-            self.cloth_west.setEnabled(False)
-            self.search_west.setEnabled(False)
-            self.cloth_north.setEnabled(False)
-            self.search_north.setEnabled(False)
-            self.generate.setEnabled(False)
+            self.changeAppStatus(False)
             # Confirm and go directly to generate the image.
             self.generateImage()
 
@@ -327,15 +311,8 @@ class TableClothGenerator(QMainWindow):
         self.statusBar().showMessage('Tablecloth generated. Happy rigging!')
         self.statusBar().removeWidget(self.progress_bar)
         # Now you can go back to rigging
-        self.cloth_east.setEnabled(True)
-        self.search_east.setEnabled(True)
-        self.cloth_south.setEnabled(True)
-        self.search_south.setEnabled(True)
-        self.cloth_west.setEnabled(True)
-        self.search_west.setEnabled(True)
-        self.cloth_north.setEnabled(True)
-        self.search_north.setEnabled(True)
-        self.generate.setEnabled(True)
+        self.changeAppStatus(True)
+
 
         mbox = QMessageBox()
 
@@ -366,6 +343,18 @@ class TableClothGenerator(QMainWindow):
         self.thread.finished.connect(self.thread.deleteLater)
         self.thread.finished.connect(self.GeneratedDialog)
         self.thread.start()
+
+    def changeAppStatus(self, status):
+        # True for enable, False for disable.
+        self.cloth_east.setEnabled(status)
+        self.search_east.setEnabled(status)
+        self.cloth_south.setEnabled(status)
+        self.search_south.setEnabled(status)
+        self.cloth_west.setEnabled(status)
+        self.search_west.setEnabled(status)
+        self.cloth_north.setEnabled(status)
+        self.search_north.setEnabled(status)
+        self.generate.setEnabled(status)
 
     def searchTeamID(self, cloth, plus_one=False):
         team_id = self.teams.index(cloth.itemData(cloth.currentIndex()))
