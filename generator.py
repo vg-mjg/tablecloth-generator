@@ -13,7 +13,8 @@ from PIL import Image
 from PySide6 import QtCore
 from PySide6.QtWidgets import (QWidget, QMainWindow, QApplication, QVBoxLayout,
     QHBoxLayout, QComboBox, QLabel, QPushButton, QMessageBox, QCheckBox,
-    QProgressBar, QSplashScreen, QStyledItemDelegate, QCompleter, QLineEdit)
+    QProgressBar, QSplashScreen, QStyledItemDelegate, QCompleter, QLineEdit,
+    QDialog, QFileDialog)
 from PySide6.QtGui import QIcon, QPixmap, QScreen
 from PySide6.QtCore import QObject, Qt, QThread, Signal
 
@@ -45,8 +46,8 @@ class Worker(QObject):
         layers = []
         # Make technical lines visible
         # Append all the non-team layers
-        layers.append(self.sec_layers[0].image)
         layers.append(self.sec_layers[1].image)
+        layers.append(self.sec_layers[0].image)
         if self.technical_lines:
             layers.append(self.sec_layers[2].image)
         self.update_progress.emit(10)
@@ -213,6 +214,10 @@ class TableClothGenerator(QMainWindow):
         self.generate = QPushButton(self)
         self.generate.setText("Generate Tablecloth")
         self.generate.clicked.connect(self.ConfirmDialog)
+        # Add custom mat
+        self.custom_mat = QPushButton(self)
+        self.custom_mat.setText("Add Mat")
+        self.custom_mat.clicked.connect(self.MatDialog)
 
         # Create the layout
         hbox = QHBoxLayout(self)
@@ -222,7 +227,9 @@ class TableClothGenerator(QMainWindow):
         vbox2 = QVBoxLayout(self)
         self.setLayout(vbox2)
         vbox1.setAlignment(QtCore.Qt.AlignCenter)
+        vbox1.setAlignment(QtCore.Qt.AlignTop)
         vbox2.setAlignment(QtCore.Qt.AlignCenter)
+        vbox2.setAlignment(QtCore.Qt.AlignTop)
         # Vertical layout (Bottom, right)
         vbox1.addWidget(self.label_east)
         vbox1.addWidget(self.image_east)
@@ -234,6 +241,8 @@ class TableClothGenerator(QMainWindow):
         vbox1.addWidget(self.cloth_south)
         # Add the option for technical lines
         vbox1.addWidget(self.technical_lines)
+        # Add the option to add a custom mat
+        vbox1.addWidget(self.custom_mat)
         # Vertical layout 2 (Top, left)
         vbox2.addWidget(self.label_west)
         vbox2.addWidget(self.image_west)
@@ -266,6 +275,47 @@ class TableClothGenerator(QMainWindow):
             QMessageBox.warning(self, "Error", "No player found")
         else:
             combobox.setCurrentIndex(search_index)
+
+    def MatDialog(self):
+
+        mat_dialog = QFileDialog(self)
+        mat_dialog = QFileDialog.getOpenFileName(filter="Images (*.png *.jpg)",
+            selectedFilter="Images (*.png *.jpg)")
+
+        self.MatPreviewWindow(mat_dialog[0])
+
+    def MatPreviewWindow(self, image):
+        self.mat_wid = QWidget()
+        self.mat_wid.resize(600, 600)
+        self.mat_wid.setWindowTitle("Background preview")
+
+        mat_preview_title = QLabel(self)
+        mat_preview_title.setText("Selected image (1/4 scale)")
+        mat_preview = QLabel(self)
+        mat_preview.setPixmap(QPixmap(image).scaled(512,512))
+        confirm = QPushButton(self)
+        confirm.setText("Confirm")
+        confirm.clicked.connect(
+            lambda: self.changeMatImage(image))
+
+        vbox = QVBoxLayout(self)
+        vbox.setAlignment(QtCore.Qt.AlignCenter)
+        vbox.addWidget(mat_preview_title)
+        vbox.addWidget(mat_preview)
+        vbox.addWidget(confirm)
+        self.mat_wid.setLayout(vbox)
+
+        self.mat_wid.show()
+
+    def changeMatImage(self, image):
+
+        new_bg = Image.open(image)
+        if new_bg.size != (2048, 2048):
+            new_bg = new_bg.resize((2048, 2048))
+        if new_bg.mode != "RGBA":
+            new_bg = new_bg.convert("RGBA")
+        self.sec_layers[1].image = new_bg
+        self.mat_wid.close()
 
     def ConfirmDialog(self):
         # Double check for double idiots
