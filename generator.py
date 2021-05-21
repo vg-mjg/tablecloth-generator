@@ -28,7 +28,8 @@ class Worker(QObject):
     update_progress = Signal(int)
 
     def __init__(self, tablecloth, sec_layers, teams_layers, east_id, south_id,
-        west_id, north_id, technical_lines=False, parent=None):
+        west_id, north_id, technical_lines=False, save_to=None, bg_image=None,
+        parent=None):
         super().__init__()
         self.tablecloth = tablecloth
         self.sec_layers = sec_layers
@@ -38,6 +39,8 @@ class Worker(QObject):
         self.west_id = west_id
         self.north_id = north_id
         self.technical_lines = technical_lines
+        self.save_to_route = save_to
+        self.bg_image = bg_image
 
     def run(self):
         # Compiles all the layers
@@ -46,7 +49,11 @@ class Worker(QObject):
         layers = []
         # Make technical lines visible
         # Append all the non-team layers
-        layers.append(self.sec_layers[1].image)
+        if self.bg_image is not None:
+            custom_bg = Image.open(self.bg_image)
+            layers.append(custom_bg)
+        else:
+            layers.append(self.sec_layers[1].image)
         layers.append(self.sec_layers[0].image)
         if self.technical_lines:
             layers.append(self.sec_layers[2].image)
@@ -64,8 +71,8 @@ class Worker(QObject):
         self.update_progress.emit(40)
 
         # Let's check the file does not exist first
-        if os.path.exists(THISDIR+"/Table_Dif.jpg"):
-            os.remove(THISDIR+"/Table_Dif.jpg")
+        if os.path.exists(self.save_to_route+"/Table_Dif.jpg"):
+            os.remove(self.save_to_route+"/Table_Dif.jpg")
 
         self.update_progress.emit(50)
         # Create a new image and save the layers
@@ -75,10 +82,10 @@ class Worker(QObject):
             final_tablecloth.paste(ly, (0,0), ly)
         self.update_progress.emit(75)
         # Save
-        final_tablecloth.save(THISDIR+"/Table_Dif.jpg")
+        final_tablecloth.save(self.save_to_route+"/Table_Dif.jpg")
         self.update_progress.emit(90)
         # If it exists, it means that the process was successful
-        if os.path.exists(THISDIR+"/Table_Dif.jpg"):
+        if os.path.exists(self.save_to_route+"/Table_Dif.jpg"):
             if __debug__:
                 end = timer()
                 print("This took %d seconds." % (end - start))
@@ -131,6 +138,12 @@ class TableClothGenerator(QMainWindow):
         fp_teams = json.loads(fp_teams)
         self.teams = fp_teams["teams"]
         self.players = fp_teams["players"]
+        self.save_to = fp_teams["save_route"]
+        # NOTE: This is more of a workaround to make the program efficient
+        # since the current imagelayer library is dogshit at speed.
+        # In the future this will change so that the bg image gets updated
+        # *to* the layer and not having to do this horrible path loading.
+        self.bg_image = fp_teams["image_route"]
         self.players_combobox = QComboBox()
         for team, members in self.players.items():
             for member in members:
@@ -282,7 +295,8 @@ class TableClothGenerator(QMainWindow):
         mat_dialog = QFileDialog.getOpenFileName(filter="Images (*.png *.jpg)",
             selectedFilter="Images (*.png *.jpg)")
 
-        self.MatPreviewWindow(mat_dialog[0])
+        if mat_dialog[0] != "":
+            self.MatPreviewWindow(mat_dialog[0])
 
     def MatPreviewWindow(self, image):
         self.mat_wid = QWidget()
@@ -315,6 +329,12 @@ class TableClothGenerator(QMainWindow):
         if new_bg.mode != "RGBA":
             new_bg = new_bg.convert("RGBA")
         self.sec_layers[1].image = new_bg
+        if self.save_to is not None:
+            new_bg.save(self.save_to+"\\mat_bg.png")
+            self.bg_image = self.save_to+"\\mat_bg.png"
+        else:
+            new_bg.save(THISDIR+"\\mat_bg.png")
+            self.bg_image = THISDIR+"\\mat_bg.png"
         self.mat_wid.close()
 
     def ConfirmDialog(self):
@@ -377,6 +397,25 @@ class TableClothGenerator(QMainWindow):
 
     def generateImage(self):
 
+        if self.save_to is None:
+            self.save_to = THISDIR
+
+        save_to_route = QFileDialog.getExistingDirectory(self,
+            "Where to save the image", self.save_to, QFileDialog.ShowDirsOnly \
+                | QFileDialog.DontResolveSymlinks)
+
+        if self.save_to != save_to_route:
+            temp_file = open(THISDIR + "\\team-information.json", "r",
+                                            encoding="utf-8")
+            fp_teams = json.loads(temp_file.read())
+            fp_teams["save_route"] = save_to_route
+            fp_teams["image_route"] = self.bg_image
+            new_file = open(THISDIR + "\\team-information.json", "w+",
+                                            encoding="utf-8")
+            new_file.write(json.dumps(fp_teams, indent=4))
+            new_file.close()
+
+
         self.thread = QThread()
         east_id = self.searchTeamID(self.cloth_east, True)
         south_id = self.searchTeamID(self.cloth_south, True)
@@ -384,7 +423,7 @@ class TableClothGenerator(QMainWindow):
         north_id = self.searchTeamID(self.cloth_north, True)
         self.worker = Worker(self.tablecloth, self.sec_layers,
            self.teams_layers, east_id, south_id, west_id, north_id,
-           self.technical_lines.isChecked())
+           self.technical_lines.isChecked(), save_to_route, self.bg_image)
         self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.run)
         self.worker.update_progress.connect(self.UpdateStatus)
