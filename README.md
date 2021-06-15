@@ -1,7 +1,9 @@
 # Tablecloth Generator
 ## _A tool to create tableclothes for the /mjg/ League easily_
 
-[![Screenshot](https://raw.githubusercontent.com/vg-mjg/tablecloth-generator/main/screenshot.png)]()
+| [![Screenshot](https://raw.githubusercontent.com/vg-mjg/tablecloth-generator/main/screenshot.png)]()  | [![Screenshot-2](https://raw.githubusercontent.com/vg-mjg/tablecloth-generator/main/screenshot-2.png)]()  | [![Screenshot-3](https://raw.githubusercontent.com/vg-mjg/tablecloth-generator/main/screenshot-3.png)]()  |
+|:-:|:---:|:---:|
+| *Blank version with no settings*  | *Preview window*  | *Team configuration screen*  |
 
 This simple tool just lets you pick up the teams in their according seat and then generate the tablecloth. No PAINT.net required. Easy, right?
 
