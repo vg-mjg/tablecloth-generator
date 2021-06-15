@@ -64,8 +64,11 @@ pyinstaller "Tablecloth generator.spec"
 MIT
 
 ## TO-DO
-- Improve the speed in which generates the Tablecloth.
-- Fix the bug which only allows it first to generate as a .png.
+- ~~Improve the speed in which generates the Tablecloth.~~
+- ~~Fix the bug which only allows it first to generate as a .png.~~
+- Write tests.
+- Reorganize the code so that it is much cleaner.
+- Export settings.
 
 ## Contribute
 Problems? Suggestions? Create an issue or. Pull requests are always welcomed.
