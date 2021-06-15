@@ -449,6 +449,9 @@ class TableClothGenerator(QMainWindow):
         save_changes = QPushButton(self)
         save_changes.setText("Save changes")
         save_changes.clicked.connect(self.SaveEdits)
+        export_config = QPushButton(self)
+        export_config.setText("Export Configuration")
+        export_config.clicked.connect(self.ExportTeams)
 
         config_lay = QGridLayout()
         config_lay.addWidget(self.teams_list, 1, 0)
@@ -458,11 +461,12 @@ class TableClothGenerator(QMainWindow):
         config_lay.addWidget(self.config_team_name, 3, 1, 1, 2)
         config_lay.addWidget(team_members_label, 4, 0)
         config_lay.addWidget(self.config_team_members, 5, 0)
-        config_lay.addWidget(delete_member, 5, 1, 1, 2)
         config_lay.addWidget(add_member_label, 6, 0)
         config_lay.addWidget(add_member_input, 6, 1, 1, 2)
-        config_lay.addWidget(delete_team, 7, 0)
-        config_lay.addWidget(save_changes, 7, 1, 1, 2)
+        config_lay.addWidget(delete_member, 7, 0)
+        config_lay.addWidget(delete_team, 7, 1)
+        config_lay.addWidget(save_changes, 8, 0)
+        config_lay.addWidget(export_config, 8, 1)
 
         self.teamedit_wid.setLayout(config_lay)
         self.teamedit_wid.setWindowModality(QtCore.Qt.ApplicationModal)
@@ -522,6 +526,41 @@ class TableClothGenerator(QMainWindow):
         self.cloth_south.setModel(self.players_combobox.model())
         self.cloth_west.setModel(self.players_combobox.model())
         self.cloth_north.setModel(self.players_combobox.model())
+
+    def ExportTeams(self):
+
+        export_dir = self.config["save_route"] if self.config["save_route"] \
+                                                    is not None else THISDIR
+        exported_file = QFileDialog.getSaveFileName(self, "Save File",
+            export_dir, "Save files (*.zip)")
+
+        if exported_file[0] != "":
+            export_filename = exported_file[0]
+            if export_filename.endswith(".zip") is False:
+                export_filename += ".zip"
+            files_to_export = []
+            files_to_export.append("config\\teams.json")
+
+            for root, directories, files in os.walk(THISDIR+"\\images\\logos"):
+                for filename in files:
+                    filepath = os.path.join(root, filename)
+                    files_to_export.append(filepath)
+
+            with ZipFile(export_filename, "w") as export_zip:
+                for exp_file in files_to_export:
+                    export_name = exp_file
+                    if exp_file.endswith(".json"):
+                        split_name = exp_file.split("\\")
+                        export_name = split_name[-1]
+                    if exp_file.endswith(".png"):
+                        split_name = exp_file.split("\\")
+                        export_name = "\\logos\\" + split_name[-1]
+                    export_zip.write(exp_file, arcname=export_name)
+                export_zip.close()
+
+            if os.path.exists(export_filename):
+                QMessageBox.information(self, "Export",
+                    "The export was successful")
 
     def SaveEdits(self):
 
