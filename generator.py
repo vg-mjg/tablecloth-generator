@@ -1,6 +1,6 @@
 # Python libraries
-import sys
 import os
+import sys
 import json
 import tempfile
 import webbrowser
@@ -74,14 +74,11 @@ class TableClothGenerator(QMainWindow):
         # Check if there's no configuration set up
         # and prompt to create/import one
         if self.config["total_teams"] == 0:
-            no_config = QMessageBox()
-            no_config.setWindowTitle("No configuration")
-            no_config.setText("No configuration has been found."\
-                " Do you wish to set up a new one?")
-            no_config.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-            new_config = no_config.exec()
+            self.no_config = QMessageBox.question(self, "No configuration",
+            "No configuration has been found. Do you wish to set up a new one?",
+            QMessageBox.Yes | QMessageBox.No)
 
-            if new_config == QMessageBox.Yes:
+            if self.no_config == QMessageBox.Yes:
                 self.CreateTeamsWindow()
 
         self.bg_image = self.config["image_route"]
@@ -265,7 +262,7 @@ class TableClothGenerator(QMainWindow):
 
         self.teamcreation_wid = EditionWidget()
         self.teamcreation_wid.resize(400, 200)
-        self.teamcreation_wid.setWindowTitle("First configuration")
+        self.teamcreation_wid.setWindowTitle("Teams configuration")
 
         self.new_config = {}
 
