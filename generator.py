@@ -319,13 +319,15 @@ class TableClothGenerator(QMainWindow):
         current_teams = json.loads(fp_teams.read())
         fp_teams.close()
         team = {}
-        current_teams['teams'].append(name)
-        current_teams['players'][name] = [members.itemText(i) for i in\
-                                                        range(members.count())]
+        current_teams["teams"].append(name)
+        current_teams["players"][name] = [str(self.members_list.item(i).text())\
+                                    for i in range(self.members_list.count())]
         new_team = open(THISDIR + "\\config\\teams.json", "w+",
                             encoding="utf-8")
         add_config = open(THISDIR + "\\config\\config.json", "w+",
                             encoding="utf-8")
+        self.teams = current_teams["teams"]
+        self.players = current_teams["players"]
         self.config["total_teams"] += 1
         new_id = self.config["total_teams"] + 1
         self.num_id.setText(str(new_id))
@@ -336,6 +338,8 @@ class TableClothGenerator(QMainWindow):
         self.name_input.clear()
 
         self.members_list.clear()
+
+        self.UpdatePlayersList()
 
     def ImportTeamImage(self):
 
