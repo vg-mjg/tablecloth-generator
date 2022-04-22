@@ -349,8 +349,11 @@ class TableClothGenerator(QMainWindow):
 
         if image_dialog[0] != "":
             new_team_logo = Image.open(image_dialog[0]).convert("RGBA")
-            if new_team_logo.size != (250, 250):
-                new_team_logo.resize((250, 250))
+            # Check if it's full quarter
+            if new_team_logo.size != (1568, 786):
+                # If not, default to assume it's the logo
+                if new_team_logo.size != (250, 250):
+                    new_team_logo.resize((250, 250))
             new_team_logo.save(THISDIR+"\\images\\logos\\team%s.png"\
                 % self.num_id.text())
 

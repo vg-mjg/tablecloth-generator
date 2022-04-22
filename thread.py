@@ -44,17 +44,21 @@ class GenerateImageThread(QObject):
 
         self.update_progress.emit(10)
 
-        team_east = Image.open(THISDIR + "\\images\\logos\\team%d.png"\
-            % self.east_id).resize((250, 250)).convert("RGBA")
+        image_east = Image.open(THISDIR + "\\images\\logos\\team%d.png"\
+            % self.east_id)
+        team_east = image_east.convert("RGBA")
 
-        team_south = Image.open(THISDIR + "\\images\\logos\\team%d.png"\
-            % self.south_id).resize((250, 250)).rotate(90).convert("RGBA")
+        image_south = Image.open(THISDIR + "\\images\\logos\\team%d.png"\
+            % self.south_id)
+        team_south = image_south.rotate(90, expand=True).convert("RGBA")
         
-        team_west = Image.open(THISDIR + "\\images\\logos\\team%d.png"
-            % self.west_id).resize((250, 250)).rotate(180).convert("RGBA")
+        image_west = Image.open(THISDIR + "\\images\\logos\\team%d.png"
+            % self.west_id)
+        team_west = image_west.rotate(180, expand=True).convert("RGBA")
         
-        team_north = Image.open(THISDIR + "\\images\\logos\\team%d.png"
-            % self.north_id).resize((250, 250)).rotate(-90).convert("RGBA")
+        image_north = Image.open(THISDIR + "\\images\\logos\\team%d.png"
+            % self.north_id)
+        team_north = image_north.rotate(-90, expand=True).convert("RGBA")
 
         self.update_progress.emit(40)
         # Let's check the file does not exist first
@@ -71,10 +75,23 @@ class GenerateImageThread(QObject):
                               .convert("RGBA")
             final_tablecloth.paste(tech_lines, (0, 0), tech_lines)
         self.update_progress.emit(50)
-        final_tablecloth.paste(team_east, (900, 1325), team_east)
-        final_tablecloth.paste(team_south, (1420, 900), team_south)
-        final_tablecloth.paste(team_west, (890, 340), team_west)
-        final_tablecloth.paste(team_north, (400, 910), team_north)
+        # Check that each image is full or just logo, then submit
+        if image_east.size == (1568, 786):
+            final_tablecloth.paste(team_east, (240, 1020), team_east)
+        else:
+            final_tablecloth.paste(team_east, (900, 1325), team_east)
+        if image_south.size == (1568, 786):
+            final_tablecloth.paste(team_south, (1020, 235), team_south)
+        else:
+            final_tablecloth.paste(team_south, (1420, 900), team_south)
+        if image_west.size == (1568, 786):
+            final_tablecloth.paste(team_west, (235, 240), team_west)
+        else:
+            final_tablecloth.paste(team_west, (890, 340), team_west)
+        if image_north.size == (1568, 786):
+            final_tablecloth.paste(team_north, (240, 240), team_north)
+        else:
+            final_tablecloth.paste(team_north, (400, 910), team_north)
         self.update_progress.emit(75)
         if self.temp_img is False:
             final_tablecloth.convert("RGB").save(self.save_to_route\
