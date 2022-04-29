@@ -79,19 +79,19 @@ class GenerateImageThread(QObject):
         if image_east.size == (1568, 786):
             final_tablecloth.paste(team_east, (240, 1020), team_east)
         else:
-            final_tablecloth.paste(team_east, (900, 1325), team_east)
+            final_tablecloth.paste(team_east.resize((250, 250)), (900, 1325), team_east.resize((250, 250)))
         if image_south.size == (1568, 786):
             final_tablecloth.paste(team_south, (1020, 235), team_south)
         else:
-            final_tablecloth.paste(team_south, (1420, 900), team_south)
+            final_tablecloth.paste(team_south.resize((250, 250)), (1420, 900), team_south.resize((250, 250)))
         if image_west.size == (1568, 786):
             final_tablecloth.paste(team_west, (235, 240), team_west)
         else:
-            final_tablecloth.paste(team_west, (890, 340), team_west)
+            final_tablecloth.paste(team_west.resize((250, 250)), (890, 340), team_west.resize((250, 250)))
         if image_north.size == (1568, 786):
             final_tablecloth.paste(team_north, (240, 240), team_north)
         else:
-            final_tablecloth.paste(team_north, (400, 910), team_north)
+            final_tablecloth.paste(team_north.resize((250, 250)), (400, 910), team_north.resize((250, 250)))
         self.update_progress.emit(75)
         if self.temp_img is False:
             final_tablecloth.convert("RGB").save(self.save_to_route\
