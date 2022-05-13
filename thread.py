@@ -87,7 +87,7 @@ class GenerateImageThread(QObject):
         if image_west.size == (1568, 786):
             final_tablecloth.paste(team_west, (235, 240), team_west)
         else:
-            final_tablecloth.paste(team_west.resize((250, 250)), (890, 340), team_west.resize((250, 250)))
+            final_tablecloth.paste(team_west.resize((250, 250)), (890, 370), team_west.resize((250, 250)))
         if image_north.size == (1568, 786):
             final_tablecloth.paste(team_north, (240, 240), team_north)
         else:
