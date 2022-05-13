@@ -210,6 +210,12 @@ class TableClothGenerator(QMainWindow):
 
         self.centralWidget.setLayout(grid_layout)
 
+        # Set Tab order
+        self.setTabOrder(self.search_east, self.search_south)
+        self.setTabOrder(self.search_south, self.search_west)
+        self.setTabOrder(self.search_west, self.search_north)
+        self.setTabOrder(self.search_north, self.generate)
+
         # Create the window
         self.show()
 
