@@ -177,36 +177,32 @@ class TableClothGenerator(QMainWindow):
         grid_layout = QGridLayout()
         grid_layout.setAlignment(QtCore.Qt.AlignCenter)
         grid_layout.setAlignment(QtCore.Qt.AlignTop)
-        # Labels East, West
+        # Labels East, South, West, North
         grid_layout.addWidget(self.label_east, 1, 1)
-        grid_layout.addWidget(self.label_west, 1, 2)
-        # Image preview East, West
+        grid_layout.addWidget(self.label_south, 1, 2)
+        grid_layout.addWidget(self.label_west, 1, 3)
+        grid_layout.addWidget(self.label_north, 1, 4)
+        # Image preview East, South, West, North
         grid_layout.addWidget(self.image_east, 2, 1)
-        grid_layout.addWidget(self.image_west, 2, 2)
-        # Search player East, West
+        grid_layout.addWidget(self.image_south, 2, 2)
+        grid_layout.addWidget(self.image_west, 2, 3)
+        grid_layout.addWidget(self.image_north, 2, 4)
+        # Search player East, South, West, North
         grid_layout.addWidget(self.search_east, 3, 1)
-        grid_layout.addWidget(self.search_west, 3, 2)
-        # Player combobox East, West
+        grid_layout.addWidget(self.search_south, 3, 2)
+        grid_layout.addWidget(self.search_west, 3, 3)
+        grid_layout.addWidget(self.search_north, 3, 4)
+        # Player combobox East, South, West, North
         grid_layout.addWidget(self.cloth_east, 4, 1)
-        grid_layout.addWidget(self.cloth_west, 4, 2)
-        # Labes South, North
-        grid_layout.addWidget(self.label_south, 5, 1)
-        grid_layout.addWidget(self.label_north, 5, 2)
-        # Image preview South, North
-        grid_layout.addWidget(self.image_south, 6, 1)
-        grid_layout.addWidget(self.image_north, 6, 2)
-        # Search player South, North
-        grid_layout.addWidget(self.search_south, 7, 1)
-        grid_layout.addWidget(self.search_north, 7, 2)
-        # Player combobox South, North
-        grid_layout.addWidget(self.cloth_south, 8, 1)
-        grid_layout.addWidget(self.cloth_north, 8, 2)
+        grid_layout.addWidget(self.cloth_south, 4, 2)
+        grid_layout.addWidget(self.cloth_west, 4, 3)
+        grid_layout.addWidget(self.cloth_north, 4, 4)
         # Technical lines
-        grid_layout.addWidget(self.technical_lines, 9, 1)
+        grid_layout.addWidget(self.technical_lines, 5, 1)
         # Custom mat/bg
-        grid_layout.addWidget(self.custom_mat, 10, 1)
+        grid_layout.addWidget(self.custom_mat, 5, 2)
         # Generate
-        grid_layout.addWidget(self.generate, 10, 2)
+        grid_layout.addWidget(self.generate, 5, 4)
 
         self.centralWidget.setLayout(grid_layout)
 
